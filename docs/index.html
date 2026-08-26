@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Asr Shifo — Onlayn ariza</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --teal-dark: #0f766e;
+    --teal: #14b8a6;
+    --teal-light: #d1fae5;
+    --bg: #f0fdfa;
+    --card-bg: #ffffff;
+    --text: #134e4a;
+    --text-secondary: #6b7280;
+    --border: #e5e7eb;
+  }
+  [data-theme="dark"] {
+    --teal-dark: #14b8a6;
+    --teal: #2dd4bf;
+    --teal-light: #134e4a;
+    --bg: #0b1420;
+    --card-bg: #132030;
+    --text: #e6fffa;
+    --text-secondary: #9ca3af;
+    --border: #1f2b3a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding-bottom: 90px;
+    transition: background 0.25s, color 0.25s;
+  }
+  .header {
+    background: linear-gradient(135deg, var(--teal-dark), var(--teal));
+    color: white;
+    padding: 24px 20px 20px;
+    text-align: center;
+    border-radius: 0 0 24px 24px;
+    position: relative;
+    animation: fadeIn 0.4s ease;
+  }
+  .theme-toggle {
+    position: absolute;
+    top: 16px; right: 16px;
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    font-size: 18px;
+    cursor: pointer;
+  }
+  .header .logo-circle {
+    width: 56px; height: 56px;
+    background: white;
+    border-radius: 50%;
+    margin: 0 auto 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+  }
+  .header h1 { margin: 0; font-size: 20px; font-weight: 700; }
+  .header p { margin: 4px 0 0; font-size: 12.5px; opacity: 0.9; }
+
+  .container { padding: 18px; animation: fadeIn 0.4s ease; }
+
+  .section-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--teal-dark);
+    margin: 18px 0 10px;
+  }
+
+  .tabs {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--card-bg);
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
+    z-index: 100;
+  }
+  .tab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 3px;
+    padding: 6px 2px;
+    color: var(--text-secondary);
+    font-size: 10.5px;
+    cursor: pointer;
+    border-radius: 12px;
+    transition: all 0.15s;
+  }
+  .tab-btn .icon { font-size: 19px; }
+  .tab-btn.active { color: var(--teal-dark); background: var(--teal-light); }
+
+  .page { display: none; animation: fadeIn 0.3s ease; }
+  .page.active { display: block; }
+
+  /* --- Ariza bo'limi --- */
+  .service-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .service-card {
+    background: var(--card-bg);
+    border: 2px solid transparent;
+    border-radius: 16px;
+    padding: 14px 10px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(15,118,110,0.08);
+    transition: all 0.15s;
+  }
+  .service-card:active { transform: scale(0.96); }
+  .service-card .emoji { font-size: 24px; display: block; margin-bottom: 6px; }
+  .service-card .name { font-size: 13px; font-weight: 600; }
+  .service-card .hours { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+  .service-card .queue-count { font-size: 10.5px; color: var(--teal); margin-top: 4px; font-weight: 600; }
+  .service-card.selected { border-color: var(--teal); background: var(--teal-light); }
+
+  .form-group { margin-bottom: 14px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--teal-dark); }
+  input {
+    width: 100%; padding: 13px 14px;
+    border: 1.5px solid var(--border); border-radius: 12px;
+    font-size: 15px; background: var(--card-bg); color: var(--text); outline: none;
+  }
+  input:focus { border-color: var(--teal); }
+  .time-note {
+    background: var(--teal-light); border-radius: 12px; padding: 10px 14px;
+    font-size: 12.5px; color: var(--teal-dark); margin-top: 8px; display: none;
+  }
+  .submit-btn {
+    width: 100%; padding: 16px; background: var(--teal-dark); color: white;
+    border: none; border-radius: 14px; font-size: 16px; font-weight: 700;
+    margin-top: 18px; cursor: pointer; transition: transform 0.1s;
+  }
+  .submit-btn:active { transform: scale(0.98); }
+  .error-msg { color: #dc2626; font-size: 12.5px; margin-top: 6px; display: none; }
+
+  /* --- Shifokorlar --- */
+  .doctor-card {
+    background: var(--card-bg); border-radius: 16px; padding: 16px;
+    display: flex; gap: 14px; align-items: center; margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(15,118,110,0.08);
+  }
+  .doctor-avatar {
+    width: 54px; height: 54px; border-radius: 50%;
+    background: var(--teal-light); display: flex; align-items: center; justify-content: center;
+    font-size: 26px; flex-shrink: 0;
+  }
+  .doctor-info .doctor-name { font-weight: 700; font-size: 15px; }
+  .doctor-info .doctor-spec { font-size: 12.5px; color: var(--teal); font-weight: 600; margin: 2px 0; }
+  .doctor-info .doctor-exp { font-size: 12px; color: var(--text-secondary); }
+
+  /* --- Manzil --- */
+  .map-frame {
+    width: 100%; height: 220px; border-radius: 16px; border: none; margin-bottom: 12px;
+  }
+  .map-link-btn {
+    display: block; text-align: center; background: var(--teal-dark); color: white;
+    padding: 14px; border-radius: 14px; text-decoration: none; font-weight: 700; font-size: 14.5px;
+  }
+  .info-card {
+    background: var(--card-bg); border-radius: 16px; padding: 16px; margin-top: 12px;
+    box-shadow: 0 2px 8px rgba(15,118,110,0.08); font-size: 13.5px; line-height: 1.7;
+  }
+
+  /* --- Sharhlar --- */
+  .review-card {
+    background: var(--card-bg); border-radius: 16px; padding: 16px; margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(15,118,110,0.08);
+  }
+  .review-stars { color: #f59e0b; font-size: 14px; margin-bottom: 6px; }
+  .review-text { font-size: 13.5px; line-height: 1.6; }
+  .review-author { font-size: 12px; color: var(--text-secondary); margin-top: 8px; font-weight: 600; }
+
+  /* --- Narxlar --- */
+  .price-table { background: var(--card-bg); border-radius: 16px; overflow: hidden; box-shadow: 0 2px 8px rgba(15,118,110,0.08); }
+  .price-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+  }
+  .price-row:last-child { border-bottom: none; }
+  .price-row .p-name { font-size: 13.5px; font-weight: 600; }
+  .price-row .p-name .p-hours { display: block; font-size: 11px; color: var(--text-secondary); font-weight: 400; margin-top: 2px; }
+  .price-row .p-value { font-size: 13px; color: var(--teal-dark); font-weight: 700; }
+
+  .social-row { display: flex; gap: 10px; margin-top: 14px; }
+  .social-btn {
+    flex: 1; text-align: center; padding: 12px; border-radius: 12px;
+    background: var(--card-bg); box-shadow: 0 2px 8px rgba(15,118,110,0.08);
+    text-decoration: none; color: var(--text); font-size: 12.5px; font-weight: 600;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <button class="theme-toggle" id="themeToggle">🌙</button>
+  <div class="logo-circle">🏥</div>
+  <h1>Asr Shifo</h1>
+  <p>Tibbiyot markazi</p>
+</div>
+
+<!-- ARIZA SAHIFASI -->
+<div class="page active" id="page-ariza">
+  <div class="container">
+    <div class="section-title">1. Shifokor yoki xizmatni tanlang</div>
+    <div class="service-grid" id="serviceGrid">
+      <div class="service-card" data-name="Nevropatolog" data-hours="">
+        <span class="emoji">🧠</span>
+        <div class="name">Nevropatolog</div>
+        <div class="hours">13:00 gacha</div>
+        <div class="queue-count" data-queue="Nevropatolog"></div>
+      </div>
+      <div class="service-card" data-name="Kardiolog" data-hours="">
+        <span class="emoji">❤️</span>
+        <div class="name">Kardiolog</div>
+        <div class="hours">13:00 gacha</div>
+        <div class="queue-count" data-queue="Kardiolog"></div>
+      </div>
+      <div class="service-card" data-name="Massaj" data-hours="08:00 - 13:00">
+        <span class="emoji">💆</span>
+        <div class="name">Massaj</div>
+        <div class="hours">08:00 - 13:00</div>
+        <div class="queue-count" data-queue="Massaj"></div>
+      </div>
+      <div class="service-card" data-name="Xijama" data-hours="08:00 - 17:00">
+        <span class="emoji">🩸</span>
+        <div class="name">Xijama</div>
+        <div class="hours">08:00 - 17:00</div>
+        <div class="queue-count" data-queue="Xijama"></div>
+      </div>
+      <div class="service-card" data-name="Stomatologiya" data-hours="13:00 - 17:00">
+        <span class="emoji">🦷</span>
+        <div class="name">Stomatologiya</div>
+        <div class="hours">13:00 - 17:00</div>
+        <div class="queue-count" data-queue="Stomatologiya"></div>
+      </div>
+    </div>
+
+    <div class="section-title">2. Ma'lumotlaringiz</div>
+    <div class="form-group">
+      <label>To'liq ism-familiya</label>
+      <input type="text" id="fullName" placeholder="Masalan: Aliyev Vali">
+    </div>
+    <div class="form-group">
+      <label>Telefon raqam</label>
+      <input type="tel" id="phone" placeholder="+998 90 123 45 67">
+    </div>
+    <div class="form-group" id="timeGroup" style="display:none;">
+      <label>Kelish vaqti</label>
+      <input type="text" id="timeInput" placeholder="masalan: 14:30">
+      <div class="time-note" id="timeNote"></div>
+    </div>
+
+    <div class="error-msg" id="errorMsg"></div>
+    <button class="submit-btn" id="submitBtn">✅ Navbatga yozilish</button>
+  </div>
+</div>
+
+<!-- SHIFOKORLAR SAHIFASI -->
+<div class="page" id="page-doctors">
+  <div class="container">
+    <div class="section-title">👨‍⚕️ Shifokorlarimiz</div>
+
+    <div class="doctor-card">
+      <div class="doctor-avatar">🧠</div>
+      <div class="doctor-info">
+        <div class="doctor-name">Nevropatolog shifokor</div>
+        <div class="doctor-spec">Nevrologiya bo'yicha mutaxassis</div>
+        <div class="doctor-exp">Ish tajribasi: yillar davomida amaliyot</div>
+      </div>
+    </div>
+
+    <div class="doctor-card">
+      <div class="doctor-avatar">❤️</div>
+      <div class="doctor-info">
+        <div class="doctor-name">Kardiolog shifokor</div>
+        <div class="doctor-spec">Yurak-qon tomir kasalliklari bo'yicha mutaxassis</div>
+        <div class="doctor-exp">Ish tajribasi: yillar davomida amaliyot</div>
+      </div>
+    </div>
+
+    <div class="doctor-card">
+      <div class="doctor-avatar">💆</div>
+      <div class="doctor-info">
+        <div class="doctor-name">Massaj mutaxassisi</div>
+        <div class="doctor-spec">Tibbiy massaj xizmatlari</div>
+        <div class="doctor-exp">Malakali massaj terapevti</div>
+      </div>
+    </div>
+
+    <div class="doctor-card">
+      <div class="doctor-avatar">🦷</div>
+      <div class="doctor-info">
+        <div class="doctor-name">Stomatolog shifokor</div>
+        <div class="doctor-spec">Tish davolash va parvarish</div>
+        <div class="doctor-exp">Zamonaviy stomatologiya xizmatlari</div>
+      </div>
+    </div>
+
+    <div class="info-card">
+      ℹ️ Shifokorlarimiz haqida to'liqroq ma'lumot (rasm, aniq tajriba yillari) tez orada qo'shiladi.
+    </div>
+  </div>
+</div>
+
+<!-- MANZIL SAHIFASI -->
+<div class="page" id="page-location">
+  <div class="container">
+    <div class="section-title">📍 Manzilimiz</div>
+    <iframe class="map-frame" loading="lazy"
+      src="https://maps.google.com/maps?q=41.089413,71.796775&z=15&output=embed">
+    </iframe>
+    <a class="map-link-btn" href="https://maps.google.com/?q=41.089413,71.796775" target="_blank">
+      🗺 Xaritada ochish / Yo'nalish olish
+    </a>
+    <div class="info-card">
+      🏥 <b>Asr Shifo tibbiyot markazi</b><br>
+      Namangan viloyati, Chortoq tumani, R-118 yo'li.<br><br>
+      🕐 Ish vaqti: har kuni 08:00 - 18:00<br>
+      🍽 Tushlik tanaffusi: 12:00 - 13:00
+    </div>
+  </div>
+</div>
+
+<!-- SHARHLAR SAHIFASI -->
+<div class="page" id="page-reviews">
+  <div class="container">
+    <div class="section-title">⭐ Mijozlar fikri</div>
+
+    <div class="review-card">
+      <div class="review-stars">⭐⭐⭐⭐⭐</div>
+      <div class="review-text">Juda ham yaxshi xizmat, shifokorlar diqqatli va mehribon. Navbatga yozilish ham juda qulay bo'ldi.</div>
+      <div class="review-author">— Mijoz</div>
+    </div>
+
+    <div class="review-card">
+      <div class="review-stars">⭐⭐⭐⭐⭐</div>
+      <div class="review-text">Xijama xizmatidan juda mamnun bo'ldim. Klinika toza va zamonaviy jihozlangan.</div>
+      <div class="review-author">— Mijoz</div>
+    </div>
+
+    <div class="review-card">
+      <div class="review-stars">⭐⭐⭐⭐</div>
+      <div class="review-text">Stomatolog juda professional, og'riqsiz davoladi. Tavsiya qilaman!</div>
+      <div class="review-author">— Mijoz</div>
+    </div>
+
+    <div class="info-card">
+      💬 Bu — namuna sharhlar. Haqiqiy mijozlar fikrini almashtirish uchun bizga yozing.
+    </div>
+  </div>
+</div>
+
+<!-- NARXLAR SAHIFASI -->
+<div class="page" id="page-prices">
+  <div class="container">
+    <div class="section-title">💰 Narxlar</div>
+    <div class="price-table">
+      <div class="price-row">
+        <div class="p-name">Nevropatolog ko'rigi<span class="p-hours">13:00 gacha</span></div>
+        <div class="p-value">So'rov asosida</div>
+      </div>
+      <div class="price-row">
+        <div class="p-name">Kardiolog ko'rigi<span class="p-hours">13:00 gacha</span></div>
+        <div class="p-value">So'rov asosida</div>
+      </div>
+      <div class="price-row">
+        <div class="p-name">Massaj<span class="p-hours">08:00 - 13:00</span></div>
+        <div class="p-value">Klinikada</div>
+      </div>
+      <div class="price-row">
+        <div class="p-name">Xijama<span class="p-hours">08:00 - 17:00</span></div>
+        <div class="p-value">Klinikada</div>
+      </div>
+      <div class="price-row">
+        <div class="p-name">Stomatologiya<span class="p-hours">13:00 - 17:00</span></div>
+        <div class="p-value">Klinikada</div>
+      </div>
+    </div>
+    <div class="info-card">
+      💳 To'lov: naqd, Click, Payme yoki karta orqali. Aniq narxlar bo'yicha admin bilan bog'laning.
+    </div>
+    <div class="social-row">
+      <a class="social-btn" href="https://t.me/asrshifoklinika_bot" target="_blank">📱 Telegram</a>
+      <a class="social-btn" href="#">📷 Instagram</a>
+    </div>
+  </div>
+</div>
+
+<!-- PASTKI TABLAR -->
+<div class="tabs">
+  <button class="tab-btn active" data-page="page-ariza"><span class="icon">📝</span>Ariza</button>
+  <button class="tab-btn" data-page="page-doctors"><span class="icon">👨‍⚕️</span>Shifokorlar</button>
+  <button class="tab-btn" data-page="page-location"><span class="icon">📍</span>Manzil</button>
+  <button class="tab-btn" data-page="page-reviews"><span class="icon">⭐</span>Sharhlar</button>
+  <button class="tab-btn" data-page="page-prices"><span class="icon">💰</span>Narxlar</button>
+</div>
+
+<script>
+  const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+  if (tg) { tg.expand(); tg.ready(); }
+
+  // --- Tungi/kunduzgi rejim ---
+  const themeToggle = document.getElementById('themeToggle');
+  const savedTheme = localStorage.getItem('asr_theme') || 'light';
+  if (savedTheme === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    themeToggle.textContent = '☀️';
+  }
+  themeToggle.addEventListener('click', () => {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (isDark) {
+      document.documentElement.removeAttribute('data-theme');
+      themeToggle.textContent = '🌙';
+      localStorage.setItem('asr_theme', 'light');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      themeToggle.textContent = '☀️';
+      localStorage.setItem('asr_theme', 'dark');
+    }
+  });
+
+  // --- Tab navigatsiyasi ---
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  const pages = document.querySelectorAll('.page');
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      pages.forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.page).classList.add('active');
+      window.scrollTo(0, 0);
+    });
+  });
+
+  // --- Real vaqtli navbat holati ---
+  const API_BASE = "https://YOUR-RAILWAY-DOMAIN.up.railway.app";
+  fetch(`${API_BASE}/api/queue`)
+    .then(r => r.json())
+    .then(data => {
+      document.querySelectorAll('[data-queue]').forEach(el => {
+        const service = el.dataset.queue;
+        const count = data[service] || 0;
+        el.textContent = count > 0 ? `🔵 ${count} kishi navbatda` : '🟢 Navbat yo\'q';
+      });
+    })
+    .catch(() => {
+      // API mavjud bo'lmasa, jim o'tkazamiz
+    });
+
+  // --- Ariza formasi ---
+  let selectedService = null;
+  const cards = document.querySelectorAll('.service-card');
+  const timeGroup = document.getElementById('timeGroup');
+  const timeNote = document.getElementById('timeNote');
+  const errorMsg = document.getElementById('errorMsg');
+  const paidServices = ['Massaj', 'Xijama', 'Stomatologiya'];
+
+  cards.forEach(card => {
+    card.addEventListener('click', () => {
+      cards.forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      selectedService = card.dataset.name;
+      const hours = card.dataset.hours;
+
+      if (paidServices.includes(selectedService)) {
+        timeGroup.style.display = 'block';
+        timeNote.style.display = 'block';
+        timeNote.textContent = `🕐 Ish vaqti: ${hours}. To'lov klinikada amalga oshiriladi.`;
+      } else {
+        timeGroup.style.display = 'none';
+        timeNote.style.display = 'none';
+      }
+    });
+  });
+
+  document.getElementById('submitBtn').addEventListener('click', () => {
+    const fullName = document.getElementById('fullName').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const timeInput = document.getElementById('timeInput').value.trim();
+    errorMsg.style.display = 'none';
+
+    if (!selectedService) {
+      errorMsg.textContent = '⚠️ Iltimos, shifokor yoki xizmatni tanlang.';
+      errorMsg.style.display = 'block';
+      return;
+    }
+    if (!fullName) {
+      errorMsg.textContent = '⚠️ Iltimos, ism-familiyangizni kiriting.';
+      errorMsg.style.display = 'block';
+      return;
+    }
+    if (!phone) {
+      errorMsg.textContent = '⚠️ Iltimos, telefon raqamingizni kiriting.';
+      errorMsg.style.display = 'block';
+      return;
+    }
+    if (paidServices.includes(selectedService) && !timeInput) {
+      errorMsg.textContent = '⚠️ Iltimos, kelish vaqtini kiriting.';
+      errorMsg.style.display = 'block';
+      return;
+    }
+
+    const data = {
+      full_name: fullName,
+      phone: phone,
+      service: selectedService,
+      appointment_time: paidServices.includes(selectedService) ? timeInput : null
+    };
+
+    if (tg) {
+      tg.sendData(JSON.stringify(data));
+      tg.close();
+    } else {
+      alert('Bu forma faqat Telegram bot ichida ishlaydi.');
+    }
+  });
+</script>
+
+</body>
+</html>
